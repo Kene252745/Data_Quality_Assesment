@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
 from sklearn.neural_network import MLPClassifier
+import matplotlib.pyplot as plt
 
 
 def training(dataset_train):
+    np.random.seed(789)
     # select the data
     data_train = dataset_train.iloc[:, :dataset_train.columns.size - 4]
     # Select the targets
@@ -12,11 +14,19 @@ def training(dataset_train):
     target_train3 = dataset_train.iloc[:, dataset_train.columns.size - 3] * 1
     target_train4 = dataset_train.iloc[:, dataset_train.columns.size - 4] * 1
 
-    # Models Initialisation (by default number of layer is 5,which can be changed to any number of your choice)
-    ann1 = MLPClassifier(hidden_layer_sizes=5)
-    ann2 = MLPClassifier(hidden_layer_sizes=5)
-    ann3 = MLPClassifier(hidden_layer_sizes=5)
-    ann4 = MLPClassifier(hidden_layer_sizes=5)
+    # Models Initialisation
+    ann1 = MLPClassifier(hidden_layer_sizes=(100, 50, 300), activation='relu', solver='lbfgs', alpha=0.0001,
+                         tol=0.0001, verbose=False, warm_start=False,
+                         nesterovs_momentum=True, validation_fraction=0.1, max_fun=15000)
+    ann2 = MLPClassifier(hidden_layer_sizes=(100, 50, 300), activation='relu', solver='lbfgs', alpha=0.0001,
+                         tol=0.0001, verbose=False, warm_start=False,
+                         nesterovs_momentum=True, validation_fraction=0.1, max_fun=15000)
+    ann3 = MLPClassifier(hidden_layer_sizes=(100, 50, 300), activation='relu', solver='lbfgs', alpha=0.0001,
+                         tol=0.0001, verbose=False, warm_start=False,
+                         nesterovs_momentum=True, validation_fraction=0.1,  max_fun=15000)
+    ann4 = MLPClassifier(hidden_layer_sizes=(100, 200, 300), activation='relu', solver='lbfgs', alpha=0.0001,
+                         tol=0.0001, verbose=False, warm_start=False,
+                         nesterovs_momentum=True, validation_fraction=0.1, max_fun=15000)
 
     # fit the models to our data
     ann1.fit(data_train, target_train1)
@@ -28,6 +38,7 @@ def training(dataset_train):
 
 
 def testing(dataset_test, trained_models):
+    np.random.seed(789)
     # select the data
     data_test = dataset_test.iloc[:, :dataset_test.columns.size - 4]
 
@@ -45,18 +56,26 @@ def testing(dataset_test, trained_models):
     output_test3 = model3.predict(data_test)
     output_test4 = model4.predict(data_test)
 
-    # check the precision of the models (100 can be changed to any column of your choice)
-    num_exemples = data_test.shape[0]
 
-    P1 = np.sum(output_test1 == target_test1) * 100 / num_exemples
-    P2 = np.sum(output_test2 == target_test2) * 100 / num_exemples
-    P3 = np.sum(output_test3 == target_test3) * 100 / num_exemples
-    P4 = np.sum(output_test4 == target_test4) * 100 / num_exemples
+    # check the precision of the models
+    num_examples = data_test.shape[0]
 
-    print(f'P1={P1}%,', f'P={P2}%,', f'P3={P3}%,', f'P4={P4}%', sep=' ')
+    P1 = np.sum(output_test1 == target_test1) * 100 / num_examples
+    P2 = np.sum(output_test2 == target_test2) * 100 / num_examples
+    P3 = np.sum(output_test3 == target_test3) * 100 / num_examples
+    P4 = np.sum(output_test4 == target_test4) * 100 / num_examples
+
+    print(f'Prediction Accuracy for Completeness = {P1 :.2f}%', end='\n\n')
+
+    print(f'Prediction Accuracy for Accuracy = {P2 :.2f}%', end='\n\n')
+
+    print(f'Prediction Accuracy for Inconsistency = {P3 :.2f}%', end='\n\n')
+
+    print(f'Prediction Accuracy for Integrity = {P4 :.2f}%', end='\n\n')
 
 
 def check_validity(dataset, trained_models):
+    np.random.seed(0)
     # predicts the output
     model1, model2, model3, model4 = trained_models
 
@@ -65,11 +84,19 @@ def check_validity(dataset, trained_models):
     output3 = model3.predict(dataset)
     output4 = model4.predict(dataset)
 
+    num_lines = np.size(output1)
+
     # detect the potential errors
     error1 = output1.sum() == 0
     error2 = output2.sum() == 0
     error3 = output3.sum() == 0
     error4 = output4.sum() == 0
+
+    # prediction_sizes
+    error1_size = np.sum(output1)
+    error2_size = np.sum(output2)
+    error3_size = np.sum(output3)
+    error4_size = np.sum(output4)
 
     # check if the dataset is valid
     if not (error1 == error2 == error3 == error4 == False):
@@ -79,28 +106,36 @@ def check_validity(dataset, trained_models):
 
         if not error1:
             lines_error1 = np.argwhere(output1 == 1) + 1
-            print(f'\t completeness at line(s) -> {lines_error1.ravel()}', end='\n\n')
+            print(f'\t completeness at line(s) -> {lines_error1.ravel()}')
+            print(f'\t completeness error percentage={(output1.sum() / num_lines) * 100 :.2f}%', end='\n\n\n')
 
         if not error2:
             lines_error2 = np.argwhere(output2 == 1) + 1
-            print(f'\t accuracy at line(s) -> {lines_error2.ravel()}', end='\n\n')
+            print(f'\t Accuracy at line(s) -> {lines_error2.ravel()}')
+            print(f'\t Accuracy error percentage={(output2.sum() / num_lines) * 100 :.2f}%', end='\n\n\n')
 
         if not error3:
             lines_error3 = np.argwhere(output3 == 1) + 1
-            print(f'\t inconsistence at line(s) -> {lines_error3.ravel()}', end='\n\n')
+            print(f'\t Inconsistency at line(s) -> {lines_error3.ravel()}')
+            print(f'\t Inconsistency error percentage={(output3.sum() / num_lines) * 100 :.2f}%', end='\n\n\n')
 
         if not error4:
             lines_error4 = np.argwhere(output4 == 1) + 1
-            print(f'\t integrity at line(s) -> {lines_error1.ravel()}', end='\n\n')
+            print(f'\t Integrity at line(s) -> {lines_error4.ravel()}')
+            print(f'\t Integrity error percentage={(output4.sum() / num_lines) * 100 :.2f}%', end='\n\n\n')
+
+        return [error1_size, error2_size, error3_size, error4_size,
+                num_lines - (error1_size + error2_size + error3_size + error4_size)]
 
 
 def transform_data(list_files_path, max_num_feat=100, NaN_rep_val=-100, for_=None, contain_targets=None):
-    if for_ == None:
+    np.random.seed(0)
+    if for_ is None:
         raise (
             Exception("argument 'for_' not specified; Please specify if the dataset(s) is for training of testing !"))
     if for_ in [1, 'test', 'testing'] and (len(list_files_path) > 1):
         raise (Exception("length of list_files_path > 1; Only take one dataset for test!"))
-    if contain_targets == None:
+    if contain_targets is None:
         raise (Exception("contain_targets argument is None; Please precise if the dataset(s) contain(s) targets !"))
 
     excel_extensions = ['xltx', 'xls', 'xlsm', 'xlw', 'xml', 'xlt', 'xlam', 'xlsx', 'xla', 'xlsb', 'xltm', 'xlr']
@@ -110,7 +145,7 @@ def transform_data(list_files_path, max_num_feat=100, NaN_rep_val=-100, for_=Non
 
     # load dataset with respect to their file format
     for i, file_path in enumerate(list_files_path):
-        print(f'{(i + 1) * 100 / len(list_files_path) :.2f}%', sep=' ')
+        # print(f'{(i+1) * 100 / len(list_files_path) :.2f}%', sep=' ')
         if file_path.split('.')[-1] in excel_extensions:
             dataset = pd.read_excel(file_path)
             list_dataset.append(dataset)
@@ -127,11 +162,11 @@ def transform_data(list_files_path, max_num_feat=100, NaN_rep_val=-100, for_=Non
         dataset.fillna(NaN_rep_val, inplace=True)
         dataset.columns = range(dataset.shape[1])
 
-        # factorize columns with string d type
+        # factorize columns with string type
         for column_id in range(dataset.shape[1]):
-            columnn = np.array(dataset.iloc[:, column_id])
-            if not np.issubdtype(columnn.dtype, np.number):
-                labels, lavels = pd.factorize(pd.Series(columnn))
+            column = np.array(dataset.iloc[:, column_id])
+            if not np.issubdtype(column.dtype, np.number):
+                labels, levels = pd.factorize(pd.Series(column))
                 # print(labels)
                 dataset.iloc[:, column_id] = labels
 
@@ -149,9 +184,9 @@ def transform_data(list_files_path, max_num_feat=100, NaN_rep_val=-100, for_=Non
             # change the dataset to its completed version
             list_dataset[i] = completed_dataset
 
-    if (for_ in [0, 'train', 'traning']) and (len(list_dataset) > 1):
+    if (for_ in [0, 'train', 'training']) and (len(list_dataset) > 1):
         final_dataset = pd.concat(list_dataset, ignore_index=True)
-    if (for_ in [0, 'train', 'traning']) and (len(list_dataset) == 1):
+    if (for_ in [0, 'train', 'training']) and (len(list_dataset) == 1):
         final_dataset = list_dataset[0]
     if for_ in [1, 'test', 'testing', 'generalization', 'gen'] and (len(list_dataset) == 1):
         final_dataset = list_dataset[0]
@@ -159,3 +194,22 @@ def transform_data(list_files_path, max_num_feat=100, NaN_rep_val=-100, for_=Non
     final_dataset.fillna(1., inplace=True)
 
     return final_dataset
+
+
+def errors_vs_success_plot(prediction_sizes):
+    error1_size, error2_size, error3_size, error4_size, good_size = prediction_sizes
+    fig, axs = plt.subplots(2, figsize=(10, 10))
+
+    labels = 'Completeness Error', 'Accuracy Error', 'Inconsistency error', 'Integrity Error', 'Quality Data'
+    sizes = [error1_size, error2_size, error3_size, error4_size, good_size]
+
+    explode = (0.05,) * 5
+    colors = ('blue', 'yellow', 'red', 'cyan', 'green')
+    # pie plot
+    axs[0].pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', shadow=True, startangle=90, colors=colors)
+    axs[0].set_title('Error Percentages', fontsize=15)
+
+    # Bar plot
+    axs[1].bar(x=labels, height=sizes, color=colors)
+    axs[1].set_title('Number of rows with error', fontsize=15)
+    plt.show()
